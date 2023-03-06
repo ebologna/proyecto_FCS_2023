@@ -90,9 +90,54 @@ personas$edad_num<-ifelse(personas$edad=="1 mes"|
 
 personas$edad_num<-as.numeric(personas$edad_num)
 freq(personas$edad_num)
+hist(personas$edad_num)
 
 freq(personas$parentesco, cumul = F)
 freq(personas$cobertura_salud, cumul = F)
-freq(personas$respondente)
 personas$respondente<-ifelse(personas$respondente=="Sí", "Si", 
                              personas$respondente)
+freq(personas$respondente)
+
+# Eliminamos las filas ociosas y trabajamos un porquito sobre las cadenas de texto
+summary(personas)
+personas[,1:10] <- lapply(personas[,1:10], factor)
+personas = subset(personas, is.na(edad_num)==F)
+personas$edad = NULL
+table(personas$grado_año)
+summary(personas)
+personas$aux_nivel = as.numeric(gsub("([0-9]+).*$", "\\1", personas$nivel))
+personas$años_estudios = ifelse(personas$aux_nivel==0, 0,
+                                ifelse(personas$aux_nivel==1, as.numeric(gsub("([0-9]+).*$", "\\1", personas$grado_año)),
+                                       ifelse(personas$aux_nivel == 2, 6,
+                                              ifelse(personas$aux_nivel == 3, 6 + as.numeric(gsub("([0-9]+).*$", "\\1", personas$grado_año)),
+                                                     ifelse(personas$aux_nivel==4, 12,
+                                                            ifelse(personas$aux_nivel == 5, 12 + as.numeric(gsub("([0-9]+).*$", "\\1", personas$grado_año)),
+                                                                   ifelse(personas$aux_nivel==6, 17, NA)))))))
+personas$años_estudios = ifelse(personas$años_estudios>17, NA, personas$años_estudios)
+personas$aux_nivel = NULL
+hist(personas$años_estudios)
+
+personas$pais_nacimiento = tolower(personas$pais_nacimiento)
+table(personas$pais_nacimiento)
+personas$pais_aux = grepl("tina", personas$pais_nacimiento, fixed = TRUE)
+personas$pais_nacimiento = ifelse(personas$pais_aux==T, "argentina", personas$pais_nacimiento)
+personas$pais_aux = grepl("arg", personas$pais_nacimiento, fixed = TRUE)
+personas$pais_nacimiento = ifelse(personas$pais_aux==T, "argentina", personas$pais_nacimiento)
+personas$pais_nacimiento = ifelse(personas$pais_nacimiento == "córdoba", "argentina", personas$pais_nacimiento)
+personas$pais_aux = NULL
+table(personas$pais_nacimiento)
+personas$pais_nacimiento = ifelse(nchar(personas$pais_nacimiento) <= 3, NA, personas$pais_nacimiento)
+personas$pais_nacimiento = as.factor(personas$pais_nacimiento)
+summary(personas$pais_nacimiento)
+
+# Pego variables específicas del hogar a la base de personas
+names(base_desigualdades)
+hogar = base_desigualdades
+hogar = hogar[,c(4, 5, 7, 8, 9, 10, 11, 112:230)]
+class(hogar$hogar)
+class(personas$hogar)
+library(dplyr)
+personas = left_join(personas, hogar, by = "hogar")
+
+
+
