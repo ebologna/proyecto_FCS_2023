@@ -182,7 +182,7 @@ hogar$cat_ocup = ifelse((hogar$cat_ocup == "Empleado formal" | hogar$cat_ocup ==
 table(hogar$cat_ocup)
 
 tabla = hogar %>% 
-  group_by(sexo_jefea) %>% 
+  # group_by(sexo_jefea) %>% 
   summarise(informales = sum(cat_ocup == "Empleado informal", na.rm = T),
             total_asalariados = sum(cat_ocup == "Empleado informal", na.rm = T) + sum(cat_ocup == "Empleado formal", na.rm = T),
             total_activos = sum(estado == "Ocupado", na.rm = T) + sum(estado == "Desocupado", na.rm = T),
