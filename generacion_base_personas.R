@@ -133,11 +133,63 @@ summary(personas$pais_nacimiento)
 # Pego variables específicas del hogar a la base de personas
 names(base_desigualdades)
 hogar = base_desigualdades
-hogar = hogar[,c(4, 5, 7, 8, 9, 10, 11, 112:230)]
+hogar = hogar[,c(4, 5, 7, 8, 9, 10, 11, 13, 112:230)]
 class(hogar$hogar)
 class(personas$hogar)
 library(dplyr)
+table(base_desigualdades[,15])
+hogar = rename(hogar, sexo_jefea = 'Sexo...13')
 personas = left_join(personas, hogar, by = "hogar")
 
 
+### Estado
+table(is.na(base_desigualdades$Respondente))
+table(hogar$`10.1¿Durante el mes pasado hizo algún trabajo remunerado, por el que le pagan, o fabricó productos que vende o le pagaron por ayudar con el trabajo de otra persona?`)
+table(hogar$`10.2 ¿Estuvo buscando trabajo durante ese mes?`)
+hogar$'10.1' = hogar$`10.1¿Durante el mes pasado hizo algún trabajo remunerado, por el que le pagan, o fabricó productos que vende o le pagaron por ayudar con el trabajo de otra persona?`
+hogar$'10.2' = hogar$`10.2 ¿Estuvo buscando trabajo durante ese mes?`
 
+
+hogar$estado <- case_when(hogar$`10.1` == "Sí" ~ "Ocupado",
+                          hogar$`10.1` == "No" & hogar$`10.2` == "Sí" ~ "Desocupado",
+                          hogar$`10.1` == "No" & hogar$`10.2` == "No" ~ "Inactivo")
+table(hogar$estado)
+table(is.na(hogar$estado))
+
+tabla = hogar %>% 
+  group_by(sexo_jefea) %>%
+  filter(sexo_jefea == "Mujer" | sexo_jefea == "Varón") %>% 
+  summarise(desempleo = sum(estado == "Desocupado", na.rm = T) / 
+              (sum(estado == "Desocupado", na.rm = T) + sum(estado == "Ocupado", na.rm = T)))
+tabla
+
+### Categoria ocupacional
+table(hogar$`10.7 ¿Ese trabajo (si tiene más de una ocupación, se refiere al de más horas trabajadas), lo hace ...`)
+hogar$'10.7' = hogar$`10.7 ¿Ese trabajo (si tiene más de una ocupación, se refiere al de más horas trabajadas), lo hace ...`
+table(hogar$`10.13 ¿Tiene empleados?`)
+hogar$'10.13' = hogar$`10.13 ¿Tiene empleados?`
+
+hogar$cat_ocup <- case_when(hogar$`10.7` == "1.  para su propio negocio/empresa/actividad?" &
+                              hogar$`10.13` != "1. no" ~ "Patron",
+                            hogar$`10.7` == "2. como obrero o empleado para un patrón/empresa/ institución?" ~ "Empleado formal",
+                            hogar$`10.7` == "1.  para su propio negocio/empresa/actividad?" &
+                              hogar$`10.13` == "1. no" ~ "Cuentapropista")
+table(hogar$`10.10 Le descuentan`)
+10+209+3
+table(is.na(hogar$`10.10 Le descuentan`))
+hogar$cat_ocup = ifelse((hogar$cat_ocup == "Empleado formal" | hogar$cat_ocup == "Cuentapropista") &
+                          is.na(hogar$`10.10 Le descuentan`) == F, "Empleado informal", hogar$cat_ocup)
+table(hogar$cat_ocup)
+
+tabla = hogar %>% 
+  group_by(sexo_jefea) %>% 
+  summarise(informales = sum(cat_ocup == "Empleado informal", na.rm = T),
+            total_asalariados = sum(cat_ocup == "Empleado informal", na.rm = T) + sum(cat_ocup == "Empleado formal", na.rm = T),
+            total_activos = sum(estado == "Ocupado", na.rm = T) + sum(estado == "Desocupado", na.rm = T),
+            tasa_informalidad_1 = informales / total_asalariados,
+            tasa_informalidad_2 = informales / total_activos)
+tabla
+
+
+####
+hogar$`10.1` = NULL; hogar$'10.2' = NULL; hogar$'10.7' = NULL; hogar$'10.13' = NULL
