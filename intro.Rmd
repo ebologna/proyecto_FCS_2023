@@ -1,0 +1,968 @@
+---
+title: "Caracterizacion general de la muestra y la población"
+author: "JP"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r, include=FALSE, echo=FALSE}
+# Carga de bases y manipulación inicial de los datos
+rm(list=ls())
+library(readxl)
+library(dplyr)
+setwd("~/Documentos/GitHub/proyecto_FCS_2023/")
+base_desigualdades <-
+  read_excel("Desigualdades y acceso a derechos II (respuestas).xlsx")
+base_desigualdades$hogar<-1:901
+library(sf)
+muestra = st_read("muestra.gpkg")
+base_desigualdades$PM = ifelse(base_desigualdades$PM == 399, 39, base_desigualdades$PM)
+muestra$PM = as.numeric(muestra$PM)
+base_desigualdades = left_join(base_desigualdades, muestra[,c("PM","segmento")])
+
+# están cargadas las personas como variables,
+# una columnas por cada variable de cada persona
+# retengo las columnas que corresponde al bloque individual
+names(base_desigualdades)
+personas<-base_desigualdades[,12:111]
+
+# un por uno se reacomoda a long
+persona_1<-personas[,1:10]
+names(persona_1)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                    "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                    "provincia_nacimiento")
+
+persona_2<-personas[,11:20]
+names(persona_2)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                    "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                    "provincia_nacimiento")
+
+persona_3<-personas[,21:30]
+names(persona_3)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                    "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                    "provincia_nacimiento")
+persona_4<-personas[,31:40]
+names(persona_4)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                    "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                    "provincia_nacimiento")
+persona_5<-personas[,41:50]
+names(persona_5)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                    "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                    "provincia_nacimiento")
+persona_6<-personas[,51:60]
+names(persona_6)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                    "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                    "provincia_nacimiento")
+persona_7<-personas[,61:70]
+names(persona_7)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                    "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                    "provincia_nacimiento")
+persona_8<-personas[,71:80]
+names(persona_8)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                    "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                    "provincia_nacimiento")
+persona_9<-personas[,81:90]
+names(persona_9)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                    "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                    "provincia_nacimiento")
+persona_10<-personas[,91:100]
+names(persona_10)<-c("respondente", "sexo", "edad", "parentesco","cobertura_salud",
+                     "asiste_educativo", "nivel", "grado_año", "pais_nacimiento",
+                     "provincia_nacimiento")
+
+#se unen
+
+personas<-rbind(persona_1, persona_2, persona_3, persona_4, 
+                persona_5, persona_6, persona_7, persona_8,
+                persona_9, persona_10)
+
+personas$hogar<-rep(1:901, 10)
+
+
+# vuelan las intermedias
+rm(persona_1, persona_2, persona_3, persona_4,
+   persona_5, persona_6, persona_7, persona_8, persona_9, persona_10)
+
+personas$edad_num<-ifelse(personas$edad=="1 mes"|
+                            personas$edad=="2 meses"|
+                            personas$edad=="3 meses"|
+                            personas$edad=="4 meses"|
+                            personas$edad=="5 meses"|
+                            personas$edad=="6 meses"|
+                            personas$edad=="7 meses"|
+                            personas$edad=="8 meses"|
+                            personas$edad=="9 meses"
+                          ,"0", ifelse(personas$edad=="Un año",1,
+                                       personas$edad))
+
+personas$edad_num<-as.numeric(personas$edad_num)
+
+personas$respondente<-ifelse(personas$respondente=="Sí", "Si", 
+                             personas$respondente)
+
+# Eliminamos las filas ociosas y trabajamos un porquito sobre las cadenas de texto
+personas[,1:10] <- lapply(personas[,1:10], factor)
+personas = subset(personas, is.na(edad_num)==F)
+personas$edad = NULL
+table(personas$grado_año)
+summary(personas)
+personas$aux_nivel = as.numeric(gsub("([0-9]+).*$", "\\1", personas$nivel))
+personas$años_estudios = ifelse(personas$aux_nivel==0, 0,
+                                ifelse(personas$aux_nivel==1, as.numeric(gsub("([0-9]+).*$", "\\1", personas$grado_año)),
+                                       ifelse(personas$aux_nivel == 2, 6,
+                                              ifelse(personas$aux_nivel == 3, 6 + as.numeric(gsub("([0-9]+).*$", "\\1", personas$grado_año)),
+                                                     ifelse(personas$aux_nivel==4, 12,
+                                                            ifelse(personas$aux_nivel == 5, 12 + as.numeric(gsub("([0-9]+).*$", "\\1", personas$grado_año)),
+                                                                   ifelse(personas$aux_nivel==6, 17, NA)))))))
+personas$años_estudios = ifelse(personas$años_estudios>17, NA, personas$años_estudios)
+personas$aux_nivel = NULL
+
+
+personas$pais_nacimiento = tolower(personas$pais_nacimiento)
+personas$pais_aux = grepl("tina", personas$pais_nacimiento, fixed = TRUE)
+personas$pais_nacimiento = ifelse(personas$pais_aux==T, "argentina", personas$pais_nacimiento)
+personas$pais_aux = grepl("arg", personas$pais_nacimiento, fixed = TRUE)
+personas$pais_nacimiento = ifelse(personas$pais_aux==T, "argentina", personas$pais_nacimiento)
+personas$pais_nacimiento = ifelse(personas$pais_nacimiento == "córdoba", "argentina", personas$pais_nacimiento)
+personas$pais_aux = NULL
+table(personas$pais_nacimiento)
+personas$pais_nacimiento = ifelse(nchar(personas$pais_nacimiento) <= 3, NA, personas$pais_nacimiento)
+personas$pais_nacimiento = as.factor(personas$pais_nacimiento)
+personas = dplyr::left_join(personas, base_desigualdades[,c("hogar","PM")])
+
+```
+
+
+
+
+```{r, include=FALSE, echo=FALSE}
+# Mapas de población y muestra, por segmentos, y cálculo de ponderadores de hogares y personas
+pob = st_read("Estratificación de radios censales.gpkg")
+pob = subset(pob, PROV == "Córdoba")
+pob = subset(pob, DPTO == "Capital")
+pob = pob[,c("SEGMENTO","P_TOTAL","H_TOTAL")]
+pob = rename(pob, segmento = SEGMENTO)
+pob$segmento = ifelse(pob$segmento == 1, "1. Alta",
+             ifelse(pob$segmento == 2, "2. Media alta",
+                    ifelse(pob$segmento == 3, "3. Media",
+                           ifelse(pob$segmento == 4, "4. Media baja",
+                                  ifelse(pob$segmento == 5, "4. Media baja",
+                                                ifelse(pob$segmento == 6, "5. Baja", "6. Vulnerabildiad extrema"))))))
+muestra$segmento = ifelse(muestra$segmento == 1, "1. Alta",
+                      ifelse(muestra$segmento == 2, "2. Media alta",
+                             ifelse(muestra$segmento == 3, "3. Media",
+                                    ifelse(muestra$segmento == 4, "4. Media baja",
+                                           ifelse(muestra$segmento == 5, "4. Media baja",
+                                                  ifelse(muestra$segmento == 6, "5. Baja", "6. Vulnerabildiad extrema"))))))
+library(summarytools)
+muestra$PM = as.numeric(muestra$PM)
+personas = subset(personas, is.na(PM) == F)
+personas$segmento = NULL
+personas = left_join(personas, muestra[,c("PM","segmento")])
+
+p = st_drop_geometry(pob) %>% 
+  group_by(segmento) %>% 
+  summarise(porc_p = sum(P_TOTAL) / sum(pob$P_TOTAL),
+            cant_p = sum(P_TOTAL)) %>% 
+  na.omit()
+p
+
+m = personas %>% 
+  group_by(segmento) %>% 
+  summarise(porc_m = n() / nrow(personas),
+            cant_m = n()) %>% 
+  na.omit()
+m
+
+tabla_personas = left_join(m,p)
+tabla_personas$pond = round(tabla_personas$cant_p / tabla_personas$cant_m, 0)
+
+personas$pond = NULL
+personas = left_join(personas, tabla_personas[,c("segmento","pond")])
+
+#### POND HOGAR
+base_desigualdades$segmento = ifelse(base_desigualdades$segmento == 1, "1. Alta",
+                                  ifelse(base_desigualdades$segmento == 2, "2. Media alta",
+                                         ifelse(base_desigualdades$segmento == 3, "3. Media",
+                                                ifelse(base_desigualdades$segmento == 4, "4. Media baja",
+                                                       ifelse(base_desigualdades$segmento == 5, "4. Media baja",
+                                                              ifelse(base_desigualdades$segmento == 6, "5. Baja", "6. Vulnerabildiad extrema"))))))
+p = st_drop_geometry(pob) %>% 
+  group_by(segmento) %>% 
+  summarise(porc_p = sum(H_TOTAL) / sum(pob$H_TOTAL),
+            cant_p = sum(H_TOTAL)) %>% 
+  na.omit()
+p
+
+m = base_desigualdades %>%
+  filter(is.na(segmento)==F) %>% 
+  group_by(segmento) %>% 
+  summarise(porc_m = n() / nrow(base_desigualdades),
+            cant_m = n()) %>% 
+  na.omit()
+m
+
+tabla_hogar = left_join(m,p)
+tabla_hogar$pond = round(tabla_hogar$cant_p / tabla_hogar$cant_m, 0)
+base_desigualdades$pond = NULL
+base_desigualdades = left_join(base_desigualdades, tabla_hogar[,c("segmento","pond")])
+base_desigualdades$pond = ifelse(is.na(base_desigualdades$pond)==T, 0, base_desigualdades$pond)
+
+library(osmdata)
+bbox <- getbb("Municipio de Cordoba, Argentina", format_out = "sf_polygon")
+library(tmaptools)
+library(tmap)
+pob$segmento = as.factor(pob$segmento)
+mapa_poblacion <- tm_shape(tmaptools::read_osm(bb(bbox), ext = 1.05)) +
+  tm_rgb() +
+  tm_shape(pob) +
+  tm_polygons("segmento", palette="Spectral", alpha = .4, title = "Segmento") +
+  tm_scale_bar(position = c("left", "bottom")) + tm_compass(position = c("right", "top"), size = 1) +
+  tm_layout(legend.position = c("right", "center"), 
+            legend.outside = TRUE)
+
+muestra$segmento = as.factor(muestra$segmento)
+mapa_muestra <- tm_shape(tmaptools::read_osm(bb(bbox), ext = 1.05)) +
+  tm_rgb() +
+  tm_shape(muestra) + 
+  tm_polygons("segmento", palette="Spectral", alpha = .7, title = "Segmento") +
+  tm_scale_bar(position = c("left", "bottom")) + tm_compass(position = c("right", "top"), size = 1) +
+  tm_layout(legend.position = c("right", "center"), 
+            legend.outside = TRUE)
+
+
+
+```
+
+# Mapa de segmentos territoriales:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+mapa_poblacion
+```
+
+
+# Mapa de puntos de muestreo, según hipercubo latino condicional:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+mapa_muestra
+```
+
+# Distribución de los hogares según segmentos:
+
++ porc_m: porcentaje de hogares según segmento en la muestra.
++ cant_m: cantidad de hogares en cada segmento en la muestra.
++ porc_p: porcentaje de hogares según segmento en toda la ciudad.
++ cant_p: cantidad de hogares según segmento en toda la ciudad.
+
+En base a las discrepancias encontradas entre la muestra y la población en las proporciones de hogares entre segmentos, se definen una serie de ponderadores "pond". Estos ponderadores indican cantidad de hogares que representa cada hogar en la muestra, a los fines de inferir las conclusiones muestrales a toda el área de estudio.
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+library(kableExtra)
+kable(tabla_hogar)
+```
+
+# Distribución de la población según segmentos:
+
++ porc_m: porcentaje de personas según segmento en la muestra.
++ cant_m: cantidad de personas en cada segmento en la muestra.
++ porc_p: porcentaje de personas según segmento en toda la ciudad.
++ cant_p: cantidad de personas según segmento en toda la ciudad.
+
+En base a las discrepancias encontradas entre la muestra y la población en las proporciones de personas entre segmentos, se definen una serie de ponderadores "pond". Estos ponderadores indican cantidad de personas que representa cada persona en la muestra, a los fines de inferir las conclusiones muestrales a toda el área de estudio.
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+kable(tabla_personas)
+```
+
+# Datos de los hogares
+
+## Tamaño del hogar
+
+¿Cuántas personas viven en su hogar? Datos de la muestra
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+taman = base_desigualdades %>% 
+  group_by(`1.¿Cuántas personas viven en su hogar?`) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+kable(taman)
+```
+
+<br/><br/>
+
+¿Cuántas personas viven en su hogar? Datos expandidos a la población
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+taman = base_desigualdades %>% 
+  group_by(`1.¿Cuántas personas viven en su hogar?`) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+kable(taman)
+```
+
+
+
+\newpage
+
+¿Cuántas personas viven en su hogar? Datos de la muestra por segmento socioeconómico
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+taman = base_desigualdades %>% 
+  group_by(segmento, `1.¿Cuántas personas viven en su hogar?`) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+kable(taman)
+```
+
+\newpage
+
+¿Cuántas personas viven en su hogar? Datos expandidos a la población por nivel socioeconómico
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+taman = base_desigualdades %>% 
+  group_by(segmento, `1.¿Cuántas personas viven en su hogar?`) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+kable(taman)
+```
+
+\newpage
+
+¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva? Datos de la muestra
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+base_desigualdades$`2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?` =
+  ifelse(base_desigualdades$`2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?` == "w3", 3,
+         base_desigualdades$`2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`)
+base_desigualdades$`2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?` = 
+  as.numeric(base_desigualdades$`2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`)
+taman = base_desigualdades %>% 
+  group_by(`2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+taman = rename(taman, ambientes = `2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`)
+kable(taman)
+```
+
+<br/><br/>
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=4}
+library(ggplot2)
+ggplot(base_desigualdades, aes(x=`2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`)) + 
+ geom_bar(colour="black", fill="white") +
+  xlab("Ambientes") + ylab("Densidad")
+```
+
+<br/><br/>
+
+¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva? Datos expandidos a la población
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+taman = base_desigualdades %>% 
+  group_by(`2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+taman = rename(taman, ambientes = `2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`)
+kable(taman)
+```
+
+\newpage
+
+¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva? Datos de la muestra por segmento socioeconómico
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+taman = base_desigualdades %>% 
+  group_by(segmento, `2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+taman = rename(taman, ambientes = `2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`)
+kable(taman)
+```
+
+\newpage
+
+¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva? Datos expandidos a la población por nivel socioeconómico
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+taman = base_desigualdades %>% 
+  group_by(segmento, `2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+taman = rename(taman, ambientes = `2. ¿Cuántos ambientes tiene este hogar que usted usa de manera exclusiva?`)
+kable(taman)
+```
+
+\newpage
+
+
+## Servicios
+
+¿La vivienda cuenta con provisión de agua por cañería dentro de la vivienda?  Datos de la muestra
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+base_desigualdades$agua = 
+  base_desigualdades$`4. ¿La vivienda cuenta con provisión de agua por cañería dentro de la vivienda?`
+
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, Agua = agua)
+kable(agua)
+```
+
+<br/><br/>
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=2}
+library(ggplot2)
+ggplot(base_desigualdades, aes(x=agua)) + 
+ geom_bar(colour="black", fill="white") +
+  xlab("Acceso a agua potable") + ylab("Cantidad")
+```
+
+<br/><br/>
+
+¿La vivienda cuenta con provisión de agua por cañería dentro de la vivienda? Datos expandidos a la población
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, Agua = agua)
+kable(agua)
+```
+
+
+¿La vivienda cuenta con provisión de agua por cañería dentro de la vivienda? Datos de la muestra por segmento socioeconómico
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(segmento, agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, Agua = agua)
+kable(agua)
+```
+
+
+
+
+
+¿La vivienda cuenta con baño con descarga de agua?  Datos de la muestra
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+base_desigualdades$agua = 
+  base_desigualdades$`5. ¿La vivienda cuenta con baño con descarga de agua?`
+
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, "Baño con descarga" = agua)
+kable(agua)
+```
+
+<br/><br/>
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=2}
+library(ggplot2)
+ggplot(base_desigualdades, aes(x=agua)) + 
+ geom_bar(colour="black", fill="white") +
+  xlab("Baño con descarga de agua") + ylab("Cantidad")
+```
+
+<br/><br/>
+
+¿La vivienda cuenta con baño con descarga de agua? Datos expandidos a la población
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, "Baño con descarga" = agua)
+kable(agua)
+```
+
+<br/><br/>
+
+¿La vivienda cuenta con baño con descarga de agua? Datos de la muestra por segmento socioeconómico
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(segmento, agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, "Baño con descarga" = agua)
+kable(agua)
+```
+
+<br/><br/>
+
+¿La vivienda tiene piso de tierra? Datos de la muestra
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+base_desigualdades$agua = 
+  base_desigualdades$`6 ¿Piso de tierra?`
+
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, "Piso de tierra" = agua)
+kable(agua)
+```
+
+<br/><br/>
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=2}
+library(ggplot2)
+ggplot(base_desigualdades, aes(x=agua)) + 
+ geom_bar(colour="black", fill="white") +
+  xlab("Piso de tierra") + ylab("Cantidad")
+```
+
+\newpage
+
+¿La vivienda tiene piso de tierra? Datos expandidos a la población
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, "Piso de tierra" = agua)
+kable(agua)
+```
+
+<br/><br/>
+
+¿La vivienda tiene piso de tierra? Datos de la muestra por segmento socioeconómico
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(segmento, agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, "Piso de tierra" = agua)
+kable(agua)
+```
+
+\newpage
+
+## ¿Hay personas que tengan alguna discapacidad?
+
+Datos de la muestra
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+base_desigualdades$agua = 
+  base_desigualdades$`7. ¿Hay personas que tengan alguna discapacidad?`
+
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, "Personas con discapacidad" = agua)
+kable(agua)
+```
+
+<br/><br/>
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=2}
+library(ggplot2)
+ggplot(base_desigualdades, aes(x=agua)) + 
+ geom_bar(colour="black", fill="white") +
+  xlab("Personas con discapacidad") + ylab("Cantidad")
+```
+
+<br/><br/>
+
+Datos expandidos a la población
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, "Personas con discapacidad" = agua)
+kable(agua)
+```
+
+<br/><br/>
+
+Datos de la muestra por segmento socioeconómico
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(segmento, agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, "Personas con discapacidad" = agua)
+kable(agua)
+```
+
+\newpage
+
+## ¿Cuántas personas del hogar aportan ingresos?
+
+Datos de la muestra
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+base_desigualdades$agua = 
+  base_desigualdades$`8. ¿Cuántas personas del hogar aportan ingresos?`
+
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, Aportantes = agua)
+kable(agua)
+```
+
+<br/><br/>
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=4}
+library(ggplot2)
+ggplot(base_desigualdades, aes(x=agua)) + 
+ geom_bar(colour="black", fill="white") +
+  xlab("Aportantes de ingresos") + ylab("Cantidad")
+```
+
+
+
+Datos expandidos a la población
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(agua) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, Aportantes = agua)
+kable(agua)
+```
+
+\newpage
+
+Datos de la muestra por segmento socioeconómico
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+agua = base_desigualdades %>% 
+  group_by(segmento, agua) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+agua = rename(agua, Aportantes = agua)
+kable(agua)
+```
+
+\newpage
+
+# Datos de la población
+
+## Distribución según sexo
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+sexo = personas %>% 
+  group_by(sexo) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+kable(sexo)
+```
+
+<br/><br/>
+
+## Distribución según edad
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=4}
+library(ggplot2)
+ggplot(personas, aes(x=edad_num)) + 
+ geom_histogram(aes(y=..density..), colour="black", fill="white") +
+ geom_density(alpha=.2, fill="#FF6666") +
+  xlab("Edad") + ylab("Densidad")
+```
+
+<br/><br/>
+
+Estadísticas descriptivas de la edad sobre el total de la muestra:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+edad = personas %>%
+  summarise(Min = min(edad_num),
+            Q1 = quantile(edad_num)[[2]],
+            Mediana = quantile(edad_num)[[3]],
+            Media = mean(edad_num),
+            Q3 = quantile(edad_num)[[4]],
+            Max = max(edad_num),
+            "Desv. est" = sd(edad_num)) %>% 
+  t()
+colnames(edad)[1] = "Valor" 
+kable(edad)
+```
+
+<br/><br/>
+
+Edad promedio según segmento socioeconómico:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+edad = personas %>% 
+  group_by(segmento) %>% 
+  summarise("Edad promedio" = mean(edad_num))
+kable(edad)
+```
+
+\newpage
+
+Edad promedio según sexo: 
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+edad = personas %>% 
+  group_by(sexo) %>% 
+  summarise("Edad promedio" = mean(edad_num))
+kable(edad)
+```
+
+<br/><br/>
+<br/><br/>
+
+## Nivel educativo
+
+Nivel educativo en la muestra:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+library(janitor)
+nivel_ed = personas %>% 
+  group_by(nivel) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) %>%
+  adorn_totals("row") 
+kable(nivel_ed)
+```
+
+<br/><br/>
+
+Nivel educativo expandido a la población:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+nivel_ed = personas %>% 
+  group_by(nivel) %>% 
+  summarise(Cant = sum(pond)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) %>%
+  adorn_totals("row") 
+kable(nivel_ed)
+```
+
+\newpage
+
+Nivel educativo en la muestra, según segmento socioeconómico:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+nivel_ed = personas %>% 
+  group_by(segmento, nivel) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2))
+kable(nivel_ed)
+```
+
+\newpage
+
+Nivel educativo expandido a la población, según segmento socioeconómico:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+nivel_ed = personas %>% 
+  group_by(segmento, nivel) %>% 
+  summarise(Cant = sum(pond)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) 
+kable(nivel_ed)
+```
+
+\newpage
+
+Años de estudios:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=4}
+ggplot(personas, aes(x=años_estudios)) + 
+ geom_histogram(aes(y=..density..), colour="black", fill="white") +
+ geom_density(alpha=.2, fill="#FF6666") +
+  xlab("Años de estudio") + ylab("Densidad")
+```
+
+
+Años de estudios según segmento socioeconómico:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=4}
+ggplot(subset(personas, is.na(segmento)==F), aes(x=años_estudios)) + 
+ geom_histogram(aes(y=..density..), colour="black", fill="white") +
+ geom_density(alpha=.2, fill="#FF6666") +
+  xlab("Años de estudio") + ylab("Densidad") +
+  facet_grid(. ~ segmento)
+```
+
+\newpage
+
+## Lugar de nacimiento:
+
+País de nacimiento en la muestra:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+pais = personas %>% 
+  group_by(pais_nacimiento) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) %>%
+  adorn_totals("row") 
+kable(pais)
+```
+
+
+
+País de nacimiento expandido a la población:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+pais = personas %>% 
+  group_by(pais_nacimiento) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) %>%
+  adorn_totals("row") 
+kable(pais)
+```
+
+\newpage
+  
+País de nacimiento en la muestra, según segmento socioeconómico:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+pais = personas %>% 
+  group_by(segmento, pais_nacimiento) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) 
+kable(pais)
+```
+
+\newpage
+
+País de nacimiento expandido a la población, según segmento socioeconómico:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+pais = personas %>% 
+  group_by(segmento, pais_nacimiento) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) 
+kable(pais)
+```
+
+<br/><br/>
+
+Provincia de nacimiento en la muestra:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+pais = personas %>% 
+  group_by(provincia_nacimiento) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) %>%
+  adorn_totals("row") 
+kable(pais)
+```
+
+\newpage
+
+Provincia de nacimiento expandida a la población:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+pais = personas %>% 
+  group_by(provincia_nacimiento) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) %>%
+  adorn_totals("row") 
+kable(pais)
+```
+
+\newpage
+
+## Cobertura de salud
+
+
+Cobertura de salud en la muestra:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+pais = personas %>% 
+  group_by(pais_nacimiento) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) %>%
+  adorn_totals("row") 
+kable(pais)
+```
+
+<br/><br/>
+
+Cobertura de salud expandida a la población:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+cobertura = personas %>% 
+  group_by(cobertura_salud) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) %>%
+  adorn_totals("row") 
+kable(cobertura)
+```
+
+\newpage
+
+Cobertura de salud en la muestra, según segmento socioeconómico:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+cobertura = personas %>% 
+  group_by(segmento, cobertura_salud) %>% 
+  summarise(Cant = n()) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) 
+kable(cobertura)
+```
+
+\newpage
+
+Cobertura de salud expandida a la población, según segmento socioeconómico:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+cobertura = personas %>% 
+  group_by(segmento, cobertura_salud) %>% 
+  summarise(Cant = sum(pond, na.rm = T)) %>% 
+  na.omit() %>% 
+  mutate("%" = round((Cant / sum(Cant))*100, 2)) 
+kable(cobertura)
+```
+
+

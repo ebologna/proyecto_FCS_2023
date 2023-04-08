@@ -1,10 +1,25 @@
+rm(list=ls())
 library(readxl)
+library(dplyr)
+setwd("~/Documentos/GitHub/proyecto_FCS_2023/")
 base_desigualdades <-
   read_excel("Desigualdades y acceso a derechos II (respuestas).xlsx")
 
-names(base_desigualdades)
-table(base_desigualdades$`Encuestador/a`)
+
+
 base_desigualdades$hogar<-1:901
+
+
+muestra = st_read("~/Documentos/Sociales/muestreo hipercubo/muestra.gpkg")
+base_desigualdades$PM = ifelse(base_desigualdades$PM == 399, 39, base_desigualdades$PM)
+class(muestra$PM)
+muestra$PM = as.numeric(muestra$PM)
+class(base_desigualdades$PM)
+base_desigualdades = left_join(base_desigualdades, muestra[,c("PM","pond")])
+table(is.na(base_desigualdades$pond))
+
+
+
 # están cargadas las personas como variables,
 # una columnas por cada variable de cada persona
 # retengo las columnas que corresponde al bloque individual
@@ -133,7 +148,10 @@ summary(personas$pais_nacimiento)
 # Pego variables específicas del hogar a la base de personas
 names(base_desigualdades)
 hogar = base_desigualdades
-hogar = hogar[,c(4, 5, 7, 8, 9, 10, 11, 13, 112:230)]
+table(is.na(hogar$pond))
+hogar = subset(hogar, is.na(pond)==F)
+names(hogar)
+hogar = hogar[,c(2, 4, 5, 7, 8, 9, 10, 11, 13, 112:231)]
 class(hogar$hogar)
 class(personas$hogar)
 library(dplyr)
@@ -155,13 +173,50 @@ hogar$estado <- case_when(hogar$`10.1` == "Sí" ~ "Ocupado",
                           hogar$`10.1` == "No" & hogar$`10.2` == "No" ~ "Inactivo")
 table(hogar$estado)
 table(is.na(hogar$estado))
+hogar$desocup = ifelse(hogar$estado == "Desocupado", 1, 0)
+hogar$activo = ifelse(hogar$estado == "Desocupado" | hogar$estado == "Ocupado", 1, 0)
+hogar$inactivo = ifelse(hogar$estado == "Inactivo", 1, 0)
+
+# Control por segmento espacial
+tabla = hogar %>% 
+  group_by(PM) %>%
+  summarise(desempleo = sum(desocup, na.rm = T) / sum(activo, na.rm = T),
+            pond = mean(pond))
+mean(tabla$desempleo)
+tabla
+
+# ups!
+ver = subset(hogar, PM == 1)
+
+summary(personas$edad_num)
+
+
+
 
 tabla = hogar %>% 
-  group_by(sexo_jefea) %>%
-  filter(sexo_jefea == "Mujer" | sexo_jefea == "Varón") %>% 
-  summarise(desempleo = sum(estado == "Desocupado", na.rm = T) / 
-              (sum(estado == "Desocupado", na.rm = T) + sum(estado == "Ocupado", na.rm = T)))
+  summarise(desempleo = sum(desocup * pond, na.rm = T) / sum(activo * pond, na.rm = T),
+            desempleados = sum(desocup * pond),
+            activos = sum(activo * pond),
+            inactivos = sum(inactivo * pond))
 tabla
+
+hogar = left_join(hogar, base_desigualdades[,c("hogar","Edad...14")])
+sociales = hogar %>% 
+  group_by(Edad...14) %>% 
+  summarise(desempleo_sociales = sum(desocup) / sum(activo)) %>% 
+  rename(edad = Edad...14)
+
+indec = datos %>% filter(CH03 == 1) %>% 
+  group_by(CH06) %>% 
+  summarise(desempleo_indec = sum(desocup * PONDERA) / sum(activo * PONDERA),
+            n = n()) %>% 
+  rename(edad = CH06)
+
+ver = subset(indec, edad>56 & edad <65)
+sum(ver$n)
+
+indec = left_join(indec, sociales)
+
 
 ### Categoria ocupacional
 table(hogar$`10.7 ¿Ese trabajo (si tiene más de una ocupación, se refiere al de más horas trabajadas), lo hace ...`)
@@ -193,3 +248,13 @@ tabla
 
 ####
 hogar$`10.1` = NULL; hogar$'10.2' = NULL; hogar$'10.7' = NULL; hogar$'10.13' = NULL
+ver = subset(personas, parentesco == "0. Jefe/a")
+table(personas$parentesco)
+table(ver$sexo_jefea)
+399/(399+498)
+names(base_desigualdades)
+length((is.na(personas$nivel)==F))
+table(personas$nivel)/length((is.na(personas$nivel)==F))
+
+
+
