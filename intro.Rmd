@@ -10,7 +10,7 @@ output: pdf_document
 rm(list=ls())
 library(readxl)
 library(dplyr)
-setwd("~/Documentos/GitHub/proyecto_FCS_2023/")
+
 base_desigualdades <-
   read_excel("Desigualdades y acceso a derechos II (respuestas).xlsx")
 base_desigualdades$hogar<-1:901
@@ -212,6 +212,7 @@ library(osmdata)
 bbox <- getbb("Municipio de Cordoba, Argentina", format_out = "sf_polygon")
 library(tmaptools)
 library(tmap)
+library(OpenStreetMap)
 pob$segmento = as.factor(pob$segmento)
 mapa_poblacion <- tm_shape(tmaptools::read_osm(bb(bbox), ext = 1.05)) +
   tm_rgb() +
